@@ -3,7 +3,6 @@ import time
 
 from isaaclab.app import AppLauncher
 
-
 # -----------------------------------------------------------------------------
 # Isaac Sim launcher
 # -----------------------------------------------------------------------------
@@ -12,6 +11,7 @@ parser = argparse.ArgumentParser(
     description="Control the ARL Robot 1 from ROS 2 /cmd_vel."
 )
 
+parser.add_argument("--max_steps", type=int, default=None, help="Stop after this many physics steps.")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -23,41 +23,38 @@ simulation_app = app_launcher.app
 # Imports that require Isaac Sim to be running
 # -----------------------------------------------------------------------------
 
+import carb
+import isaacsim.core.experimental.utils.app as app_utils
 import numpy as np
-import torch
+import omni.graph.core as og
+import omni.kit.app
+import omni.timeline
 import rclpy
-
+import torch
+from builtin_interfaces.msg import Time as TimeMsg
+from geometry_msgs.msg import TransformStamped, Twist
+from isaaclab_contrib.controllers import LeeVelControllerCfg
+from nav_msgs.msg import Odometry
+from pxr import Usd, UsdGeom
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
-from builtin_interfaces.msg import Time as TimeMsg
-from pxr import Usd, UsdGeom
-from nav_msgs.msg import Odometry
-from sensor_msgs.msg import CameraInfo, Imu, Image, PointCloud2
+from sensor_msgs.msg import CameraInfo, Image, Imu, PointCloud2
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
-from geometry_msgs.msg import Twist, TransformStamped
-from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
+from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
+from isaaclab.sensors import CameraCfg, ImuCfg
 from isaaclab.sim import SimulationContext
 from isaaclab.utils import configclass
 from isaaclab.utils.math import convert_camera_frame_orientation_convention
-from isaaclab.sensors import CameraCfg, ImuCfg
 
 from isaaclab_assets.robots.arl_robot_1 import ARL_ROBOT_1_CFG
-from isaaclab_contrib.controllers import LeeVelControllerCfg
 
-import omni.graph.core as og
-import omni.kit.app
-import omni.timeline
-import isaacsim.core.experimental.utils.app as app_utils
-
-import carb
-
-
+from uav_research.sim.rtx_lidar_accumulator import RtxLidarRevolutionAccumulator
 
 # -----------------------------------------------------------------------------
 # Scene
@@ -192,14 +189,6 @@ class CmdVelNode(Node):
             "/point_cloud",
             10,
         )
-
-        # State exposed for a future observation term. A scan remains usable
-        # after publication, while lidar_new_scan is true for one physics step.
-        self.latest_valid_lidar_observation = None
-        self.latest_valid_lidar_stamp = None
-        self.latest_valid_lidar_age_s = float("inf")
-        self.lidar_observation_valid = False
-        self.lidar_new_scan = False
 
         self.tf_broadcaster = TransformBroadcaster(self)
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
@@ -387,29 +376,11 @@ class CmdVelNode(Node):
 
         self.depth_debug_publisher.publish(debug_msg)
     
-    def update_lidar_observation_age(self, stamp: TimeMsg) -> None:
-        """Update validity state using the current simulation timestamp."""
-        self.lidar_new_scan = False
-        if self.latest_valid_lidar_stamp is None:
-            return
-        now_ns = stamp.sec * 1_000_000_000 + stamp.nanosec
-        scan_ns = (
-            self.latest_valid_lidar_stamp.sec * 1_000_000_000
-            + self.latest_valid_lidar_stamp.nanosec
-        )
-        self.latest_valid_lidar_age_s = max(0.0, (now_ns - scan_ns) * 1.0e-9)
-
     def publish_valid_lidar(self, points_xyz: np.ndarray, stamp: TimeMsg) -> None:
         """Publish and retain one validated LiDAR revolution."""
         header = Header(stamp=stamp, frame_id="base_scan")
         msg = point_cloud2.create_cloud_xyz32(header, points_xyz)
         self.pointcloud_publisher.publish(msg)
-
-        self.latest_valid_lidar_observation = points_xyz
-        self.latest_valid_lidar_stamp = stamp
-        self.latest_valid_lidar_age_s = 0.0
-        self.lidar_observation_valid = True
-        self.lidar_new_scan = True
 
     def publish_sensor_static_tfs(self, lidar_prim: Usd.Prim, scene_cfg: Ros2DroneSceneCfg) -> None:
         """Publish fixed mounts, with the image frame using ROS optical axes."""
@@ -512,124 +483,6 @@ def main():
 
     extension_manager = omni.kit.app.get_app().get_extension_manager()
 
-    class LidarRevolutionAccumulator:
-        """Assemble raw GMO segments between verified OS1 tick boundaries."""
-
-        def __init__(self):
-            self.last_frame_id = None
-            self.synchronized = False
-            self.segments = []
-            self.raw_segments_received = 0
-            self.raw_scans_received = 0
-            self.raw_scans_rejected = 0
-            self.valid_scans = 0
-            self.valid_point_min = None
-            self.valid_point_max = None
-            self.valid_point_sum = 0
-
-        @staticmethod
-        def _xyz(gmo) -> np.ndarray:
-            coordinates = np.column_stack((gmo.x, gmo.y, gmo.z)).astype(
-                np.float32, copy=True
-            )
-            # GMO CoordsType: CARTESIAN=0, SPHERICAL=1. RTX LiDAR normally
-            # supplies spherical azimuth/elevation/range coordinates.
-            if int(gmo.elementsCoordsType) == 0:
-                return coordinates
-
-            azimuth = np.deg2rad(coordinates[:, 0])
-            elevation = np.deg2rad(coordinates[:, 1])
-            distance = coordinates[:, 2]
-            horizontal_distance = distance * np.cos(elevation)
-            return np.column_stack(
-                (
-                    horizontal_distance * np.cos(azimuth),
-                    horizontal_distance * np.sin(azimuth),
-                    distance * np.sin(elevation),
-                )
-            ).astype(np.float32, copy=False)
-
-        def _lose_synchronization(self) -> None:
-            self.synchronized = False
-            self.segments.clear()
-
-        def add(self, gmo) -> np.ndarray | None:
-            """Return XYZ for one validated revolution."""
-            frame_id = int(gmo.frameId)
-            if frame_id == self.last_frame_id:
-                return None
-
-            frame_contiguous = (
-                self.last_frame_id is None or frame_id == self.last_frame_id + 1
-            )
-            self.last_frame_id = frame_id
-            self.raw_segments_received += 1
-            if not frame_contiguous:
-                self._lose_synchronization()
-
-            points = self._xyz(gmo)
-            ticks = np.asarray(gmo.tickId, dtype=np.int64).copy()
-            scan_complete = bool(gmo.scanComplete)
-            if len(points) != len(ticks):
-                if scan_complete:
-                    self.raw_scans_received += 1
-                    self.raw_scans_rejected += 1
-                self._lose_synchronization()
-                return None
-
-            wraps = np.flatnonzero(np.diff(ticks) < 0)
-            has_verified_boundary = (
-                scan_complete
-                and len(wraps) == 1
-                and ticks[wraps[0]] == 511
-                and ticks[wraps[0] + 1] == 0
-            )
-            metadata_invalid = (scan_complete and not has_verified_boundary) or (
-                not scan_complete and len(wraps) != 0
-            )
-            if metadata_invalid:
-                if scan_complete:
-                    self.raw_scans_received += 1
-                    self.raw_scans_rejected += 1
-                self._lose_synchronization()
-                return None
-
-            if not has_verified_boundary:
-                if self.synchronized:
-                    self.segments.append(points)
-                return None
-
-            self.raw_scans_received += 1
-            split = int(wraps[0]) + 1
-            completed_scan = None
-            if self.synchronized:
-                completed_scan = np.concatenate((*self.segments, points[:split]))
-            else:
-                self.raw_scans_rejected += 1
-
-            # The remainder belongs to the next revolution. This verified wrap
-            # is also the synchronization point after startup or a dropped frame.
-            self.segments = [points[split:]]
-            self.synchronized = True
-
-            if completed_scan is None or len(completed_scan) == 0:
-                return None
-
-            point_count = len(completed_scan)
-            self.valid_scans += 1
-            self.valid_point_sum += point_count
-            self.valid_point_min = (
-                point_count
-                if self.valid_point_min is None
-                else min(self.valid_point_min, point_count)
-            )
-            self.valid_point_max = (
-                point_count
-                if self.valid_point_max is None
-                else max(self.valid_point_max, point_count)
-            )
-            return completed_scan
-
     extension_manager.set_extension_enabled_immediate(
         "isaacsim.sensors.rtx.nodes",
         True,
@@ -730,7 +583,7 @@ def main():
     rclpy.init()
     ros_node = CmdVelNode()
     ros_node.publish_sensor_static_tfs(lidar.prims[0], scene_cfg)
-    lidar_accumulator = LidarRevolutionAccumulator()
+    lidar_accumulator = RtxLidarRevolutionAccumulator()
 
     # -------------------------------------------------------------------------
     # Runtime
@@ -762,7 +615,7 @@ def main():
     print("==============================================")
     print()
 
-    while simulation_app.is_running():
+    while simulation_app.is_running() and (args_cli.max_steps is None or step < args_cli.max_steps):
 
         # Process pending ROS callbacks without blocking simulation.
         rclpy.spin_once(
@@ -827,9 +680,10 @@ def main():
 
         # Refresh state and publish the current-step TF before RTX writers run.
         scene.update(sim_dt)
-        stamp = Time(seconds=float(simulation_time.get())).to_msg()
+        simulation_time_s = float(simulation_time.get())
+        stamp = Time(seconds=simulation_time_s).to_msg()
         ros_node.publish_robot_tf(robot, stamp)
-        ros_node.update_lidar_observation_age(stamp)
+        lidar_accumulator.update_age(simulation_time_s)
 
         # RTX renders at 40 Hz. Depth acquisition remains independently gated at 20 Hz.
         depth_tick = ((step + 1) % depth_decimation == 0)
@@ -843,7 +697,7 @@ def main():
                 if data is not None:
                     gmo = parse_generic_model_output_data(data)
                     rejected_before = lidar_accumulator.raw_scans_rejected
-                    validated = lidar_accumulator.add(gmo)
+                    validated = lidar_accumulator.add(gmo, timestamp_s=simulation_time_s)
                     if validated is not None:
                         points_xyz = validated
                         # Match the official RTX ROS writer: stamp a newly completed

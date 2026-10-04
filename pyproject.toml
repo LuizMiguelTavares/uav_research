@@ -118,7 +118,7 @@ typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra -p no:launch_testing -p no:launch_ros"
 markers = [
     "unit: test exercises isolated logic and does not launch the simulator",
     "integration: test drives the simulator/scene/environment end-to-end",
