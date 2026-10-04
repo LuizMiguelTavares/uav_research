@@ -84,10 +84,7 @@ class RtxLidarRevolutionAccumulator:
 
         wraps = np.flatnonzero(np.diff(ticks) < 0)
         has_verified_boundary = (
-            scan_complete
-            and len(wraps) == 1
-            and ticks[wraps[0]] == 511
-            and ticks[wraps[0] + 1] == 0
+            scan_complete and len(wraps) == 1 and ticks[wraps[0]] == 511 and ticks[wraps[0] + 1] == 0
         )
         metadata_invalid = (scan_complete and not has_verified_boundary) or (not scan_complete and len(wraps) != 0)
         if metadata_invalid:

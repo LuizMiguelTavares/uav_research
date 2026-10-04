@@ -21,7 +21,6 @@ from .scene_cfg import Ros2DroneSceneCfg
 
 
 class CmdVelNode(Node):
-
     def __init__(self):
         super().__init__(
             "isaac_drone_cmd_vel",
@@ -80,7 +79,6 @@ class CmdVelNode(Node):
         self.get_logger().info("Listening to /cmd_vel")
 
     def cmd_vel_callback(self, msg: Twist):
-
         self.command = [
             msg.linear.x,
             msg.linear.y,
@@ -91,7 +89,6 @@ class CmdVelNode(Node):
         self.last_message_time = time.monotonic()
 
     def get_command(self, timeout_s=0.5):
-
         # No command received yet.
         if self.last_message_time is None:
             return [0.0, 0.0, 0.0, 0.0]
@@ -101,9 +98,8 @@ class CmdVelNode(Node):
             return [0.0, 0.0, 0.0, 0.0]
 
         return self.command
-    
-    def publish_odom(self, robot, stamp: TimeMsg):
 
+    def publish_odom(self, robot, stamp: TimeMsg):
         pos = robot.data.root_pos_w.torch[0]
         quat = robot.data.root_quat_w.torch[0]
 
@@ -137,7 +133,7 @@ class CmdVelNode(Node):
         msg.twist.twist.angular.z = float(ang_vel[2])
 
         self.odom_publisher.publish(msg)
-    
+
     def publish_imu(self, imu_sensor, stamp: TimeMsg):
         data = imu_sensor.data
 
@@ -161,20 +157,13 @@ class CmdVelNode(Node):
         msg.linear_acceleration.z = float(lin_acc[2])
 
         self.imu_publisher.publish(msg)
-    
-    def publish_depth(self, depth_img, intrinsic_matrix, stamp: TimeMsg):
 
+    def publish_depth(self, depth_img, intrinsic_matrix, stamp: TimeMsg):
         # ---------------------------------------------------------
         # Raw metric depth: float32, metres
         # ---------------------------------------------------------
 
-        depth_cpu = (
-            depth_img
-            .contiguous()
-            .to("cpu")
-            .numpy()
-            .astype("float32", copy=False)
-        )
+        depth_cpu = depth_img.contiguous().to("cpu").numpy().astype("float32", copy=False)
 
         raw_msg = Image()
 
@@ -206,9 +195,18 @@ class CmdVelNode(Node):
         camera_info_msg.k = [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0]
         camera_info_msg.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
         camera_info_msg.p = [
-            fx, 0.0, cx, 0.0,
-            0.0, fy, cy, 0.0,
-            0.0, 0.0, 1.0, 0.0,
+            fx,
+            0.0,
+            cx,
+            0.0,
+            0.0,
+            fy,
+            cy,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
         ]
         self.depth_camera_info_publisher.publish(camera_info_msg)
 
@@ -233,18 +231,9 @@ class CmdVelNode(Node):
             5.0,
         )
 
-        depth_vis = (
-            (5.0 - depth_vis)
-            / (5.0 - 0.1)
-            * 255.0
-        ).to(torch.uint8)
+        depth_vis = ((5.0 - depth_vis) / (5.0 - 0.1) * 255.0).to(torch.uint8)
 
-        depth_vis = (
-            depth_vis
-            .contiguous()
-            .to("cpu")
-            .numpy()
-        )
+        depth_vis = depth_vis.contiguous().to("cpu").numpy()
 
         debug_msg = Image()
 
@@ -259,7 +248,7 @@ class CmdVelNode(Node):
         debug_msg.data = depth_vis.tobytes()
 
         self.depth_debug_publisher.publish(debug_msg)
-    
+
     def publish_valid_lidar(self, points_xyz: np.ndarray, stamp: TimeMsg) -> None:
         """Publish and retain one validated LiDAR revolution."""
         header = Header(stamp=stamp, frame_id="base_scan")

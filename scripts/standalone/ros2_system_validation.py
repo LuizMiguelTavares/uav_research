@@ -6,9 +6,7 @@ from isaaclab.app import AppLauncher
 # Isaac Sim launcher
 # -----------------------------------------------------------------------------
 
-parser = argparse.ArgumentParser(
-    description="Control the ARL Robot 1 from ROS 2 /cmd_vel."
-)
+parser = argparse.ArgumentParser(description="Control the ARL Robot 1 from ROS 2 /cmd_vel.")
 
 parser.add_argument("--max_steps", type=int, default=None, help="Stop after this many physics steps.")
 AppLauncher.add_app_launcher_args(parser)
@@ -45,8 +43,8 @@ from uav_research.sim.rtx_lidar_accumulator import RtxLidarRevolutionAccumulator
 # Main
 # -----------------------------------------------------------------------------
 
-def main():
 
+def main():
     # -------------------------------------------------------------------------
     # Simulation
     # -------------------------------------------------------------------------
@@ -147,7 +145,7 @@ def main():
     robot = scene["robot"]
     imu_sensor = scene["imu"]
     depth_camera = scene["depth_camera"]
-    
+
     # -------------------------------------------------------------------------
     # Lee velocity controller
     # -------------------------------------------------------------------------
@@ -214,7 +212,6 @@ def main():
     print()
 
     while simulation_app.is_running() and (args_cli.max_steps is None or step < args_cli.max_steps):
-
         # Process pending ROS callbacks without blocking simulation.
         rclpy.spin_once(
             ros_node,
@@ -247,7 +244,6 @@ def main():
 
         # Print once per simulated second.
         if step % 100 == 0:
-
             pos = robot.data.root_pos_w.torch[0]
             vel = robot.data.root_lin_vel_w.torch[0]
 
@@ -284,7 +280,7 @@ def main():
         lidar_accumulator.update_age(simulation_time_s)
 
         # RTX renders at 40 Hz. Depth acquisition remains independently gated at 20 Hz.
-        depth_tick = ((step + 1) % depth_decimation == 0)
+        depth_tick = (step + 1) % depth_decimation == 0
         current_step_time_s = (step + 1) * sim_dt
         render_tick = current_step_time_s + 1.0e-9 >= next_render_time_s
         if render_tick:
@@ -302,14 +298,12 @@ def main():
                         # scan with Isaac simulation time from this render.
                         ros_node.publish_valid_lidar(points_xyz, stamp)
                         print(
-                            f"LIDAR_VALID | points={len(points_xyz)} | "
-                            f"frame={gmo.frameId}",
+                            f"LIDAR_VALID | points={len(points_xyz)} | frame={gmo.frameId}",
                             flush=True,
                         )
                     elif lidar_accumulator.raw_scans_rejected > rejected_before:
                         print(
-                            f"LIDAR_REJECTED | frame={gmo.frameId} | "
-                            f"scanComplete={int(gmo.scanComplete)}",
+                            f"LIDAR_REJECTED | frame={gmo.frameId} | scanComplete={int(gmo.scanComplete)}",
                             flush=True,
                         )
 
@@ -366,9 +360,7 @@ def main():
     # -------------------------------------------------------------------------
 
     valid_mean = (
-        lidar_accumulator.valid_point_sum / lidar_accumulator.valid_scans
-        if lidar_accumulator.valid_scans
-        else 0.0
+        lidar_accumulator.valid_point_sum / lidar_accumulator.valid_scans if lidar_accumulator.valid_scans else 0.0
     )
     print(
         "LIDAR_SUMMARY | "

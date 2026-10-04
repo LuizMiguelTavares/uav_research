@@ -11,7 +11,6 @@ from isaaclab_assets.robots.arl_robot_1 import ARL_ROBOT_1_CFG
 
 @configclass
 class Ros2DroneSceneCfg(InteractiveSceneCfg):
-
     ground = AssetBaseCfg(
         prim_path="/World/Ground",
         spawn=sim_utils.GroundPlaneCfg(),
@@ -38,10 +37,8 @@ class Ros2DroneSceneCfg(InteractiveSceneCfg):
         ),
     )
 
-    robot = ARL_ROBOT_1_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Robot"
-    )
-    
+    robot = ARL_ROBOT_1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+
     imu = ImuCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base_link",
         update_period=0.01,  # 100 Hz em simulation time
@@ -54,25 +51,19 @@ class Ros2DroneSceneCfg(InteractiveSceneCfg):
 
     depth_camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base_link/front_depth_camera",
-
         # 20 Hz em simulation time
         update_period=0.05,
-
         height=240,
         width=320,
-
         data_types=["depth"],
-
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=24.0,
             horizontal_aperture=20.955,
             clipping_range=(0.1, 20.0),
         ),
-
         offset=CameraCfg.OffsetCfg(
             # Um pouco à frente do centro do drone.
             pos=(0.15, 0.0, 0.0),
-
             # Com convention="world", identidade aponta para +X,
             # que estamos assumindo como a frente do ARL.
             rot=(0.0, 0.0, 0.0, 1.0),
