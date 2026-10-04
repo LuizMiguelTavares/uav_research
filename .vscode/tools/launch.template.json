@@ -7,30 +7,6 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
-        },
-        {
-            "name": "Train UavResearch-System-Validation-Arl-Robot-1 with rsl_rl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "isaaclab",
-            "args": [
-                "train",
-                "--rl_library", "rsl_rl",
-                "--task", "UavResearch-System-Validation-Arl-Robot-1",
-                "--num_envs", "4096"            ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Play UavResearch-System-Validation-Arl-Robot-1 with rsl_rl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "isaaclab",
-            "args": [
-                "play",
-                "--rl_library", "rsl_rl",
-                "--task", "UavResearch-System-Validation-Arl-Robot-1",
-                "--num_envs", "32"            ],
-            "console": "integratedTerminal"
-        },
+        }
     ]
 }

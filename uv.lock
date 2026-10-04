@@ -1516,10 +1516,6 @@ ovrtx = [
     { name = "ovrtx" },
     { name = "ovstage" },
 ]
-rsl-rl = [
-    { name = "onnxscript" },
-    { name = "rsl-rl-lib" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -4408,7 +4404,7 @@ name = "uav-research"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "isaaclab-dev", extra = ["rsl-rl"] },
+    { name = "isaaclab-dev" },
 ]
 
 [package.optional-dependencies]
@@ -4435,11 +4431,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "isaaclab-dev", editable = "../IsaacLab" },
     { name = "isaaclab-dev", extras = ["isaacsim"], marker = "extra == 'isaacsim'", editable = "../IsaacLab" },
     { name = "isaaclab-dev", extras = ["ov"], marker = "extra == 'ov'", editable = "../IsaacLab" },
     { name = "isaaclab-dev", extras = ["ovphysx"], marker = "extra == 'ovphysx'", editable = "../IsaacLab" },
     { name = "isaaclab-dev", extras = ["ovrtx"], marker = "extra == 'ovrtx'", editable = "../IsaacLab" },
-    { name = "isaaclab-dev", extras = ["rsl-rl"], editable = "../IsaacLab" },
 ]
 provides-extras = ["isaacsim", "ov", "ovphysx", "ovrtx"]
 

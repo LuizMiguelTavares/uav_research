@@ -3,4 +3,4 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Isaac Lab environments for uav_research."""
+"""UAV simulation, learning, planning, and control research."""

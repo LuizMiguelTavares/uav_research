@@ -1,6 +1,6 @@
 # UAV Research
 
-Research software for reproducible UAV simulation, reinforcement learning, motion planning, perception, and eventual real-hardware validation. The repository is an external Isaac Lab project and is intentionally not tied to a final vehicle, sensor suite, learning method, or planning method.
+Research software for reproducible UAV simulation, reinforcement learning, model predictive control (MPC), motion planning, perception, and eventual real-hardware validation. The repository is an external Isaac Lab project and is intentionally not tied to a final vehicle, sensor suite, learning method, or planning method.
 
 The initial reference pipeline preserves a validated Isaac Sim 6.1 / Isaac Lab 3.0.0-EA configuration using ARL Robot 1, ROS 2 Jazzy, depth sensing, and RTX LiDAR. These are validation fixtures rather than project-wide platform choices.
 

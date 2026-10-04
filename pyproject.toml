@@ -14,7 +14,7 @@ description = "Research software for UAV simulation, learning, planning, and con
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "isaaclab-dev[rsl-rl]",
+    "isaaclab-dev",
 ]
 
 [project.entry-points."isaaclab.tasks"]
