@@ -1,0 +1,34 @@
+.venv/
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+**/*.egg-info/
+*.py[cod]
+build/
+dist/
+
+logs/
+outputs/
+videos/
+wandb/
+
+.vscode/settings.json
+.vscode/launch.json
+pyrightconfig.json
+
+# Research and training artifacts
+checkpoints/
+artifacts/
+*.pt
+*.pth
+*.onnx
+
+# ROS runtime artifacts
+rosbag2_*/
+*.db3
+*.mcap
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
