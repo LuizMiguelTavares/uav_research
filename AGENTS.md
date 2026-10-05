@@ -1,6 +1,7 @@
 # UAV Research Agent Guide
 
 - Use the exact locally installed Isaac Lab and Isaac Sim source as the authority for version-specific APIs.
+- Do not rely on persisted Isaac Sim or Kit user state for behavior that can affect simulations or experiments. Declare required extensions, renderer and sensor settings, and other runtime dependencies in version-controlled project code or configuration, and verify migrations from a clean shell and profile.
 - Treat `../IsaacLab` as an external read-only dependency. Do not modify, clean, reset, or commit it from this repository.
 - This repository supports shared UAV RL and MPC research. The final vehicle, sensors, algorithms, and sim-to-real strategy remain open.
 - Keep high-throughput training and native simulation algorithms on Isaac Lab/PyTorch data paths. Use ROS where message, TF, visualization, integration, or hardware semantics provide value.
