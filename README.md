@@ -10,10 +10,11 @@ The project currently expects the Isaac Lab checkout at `../IsaacLab` and record
 
 ```bash
 cd ~/research/uav_research
+source /opt/ros/jazzy/setup.bash
 uv sync --extra isaacsim
 ```
 
-The first Isaac Sim invocation from a new environment may prompt you to accept NVIDIA's EULA.
+Source the ROS 2 Jazzy setup in each fresh shell before running the ROS reference pipeline. The first Isaac Sim invocation from a new environment may prompt you to accept NVIDIA's EULA.
 
 ## Reference simulation
 

@@ -32,6 +32,12 @@ With native `accumulate_outputs=True`, RTX sometimes returned truncated revoluti
 
 No point-count threshold or requirement that every azimuth bin contain a return is used. Empty return regions can be physically valid.
 
+## Required Kit startup configuration
+
+The standalone reference script explicitly enables `isaacsim.ros2.bridge` and disables UJITSO geometry streaming before `AppLauncher` starts Kit. The bridge dependency registers the RTX sensor schemas and the experimental Isaac Sim Python namespace. In a fresh Isaac Sim 6.1 profile with geometry streaming enabled, GMO can report `AuxType.BASIC` while leaving `tickId` unfilled, so every revolution must be rejected. The script therefore starts Kit with `--/UJITSO/geometry=false` and requests `aux_output_level="FULL"`, matching the metadata level used by the installed RTX GMO examples and tests.
+
+Do not move the bridge or geometry setting to a post-start call. RTX schemas and geometry-streaming mode are initialized during Kit startup. Do not reduce the auxiliary level without rerunning the bounded integration check below.
+
 ## ROS publication
 
 - `/point_cloud_raw` is the optional native writer output for diagnostics.

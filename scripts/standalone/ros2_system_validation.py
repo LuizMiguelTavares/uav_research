@@ -12,6 +12,12 @@ parser.add_argument("--max_steps", type=int, default=None, help="Stop after this
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
+# Register the ROS bridge before Kit initializes so its RTX schemas are available.
+# Disable geometry streaming and request FULL GMO metadata for reliable tick IDs in Isaac Sim 6.1.
+# Preserve any extra Kit arguments supplied by the caller.
+required_kit_args = "--enable isaacsim.ros2.bridge --/UJITSO/geometry=false"
+args_cli.kit_args = f"{required_kit_args} {args_cli.kit_args}".strip()
+
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
@@ -21,10 +27,8 @@ simulation_app = app_launcher.app
 # -----------------------------------------------------------------------------
 
 import carb
-import isaacsim.core.experimental.utils.app as app_utils
 import numpy as np
 import omni.graph.core as og
-import omni.kit.app
 import omni.timeline
 import rclpy
 import torch
@@ -77,16 +81,7 @@ def main():
         parse_generic_model_output_data,
     )
 
-    extension_manager = omni.kit.app.get_app().get_extension_manager()
-
-    extension_manager.set_extension_enabled_immediate(
-        "isaacsim.sensors.rtx.nodes",
-        True,
-    )
-
-    app_utils.enable_extension("isaacsim.ros2.bridge")
-
-    # Dá um frame para o Kit terminar de registrar os writers ROS.
+    # Give Kit one frame to finish registering the ROS writers.
     simulation_app.update()
 
     lidar = Lidar.create(
@@ -96,7 +91,7 @@ def main():
         translations=np.array([0.0, 0.0, 0.18]),
         tick_rate=10.0,
         accumulate_outputs=False,
-        aux_output_level="BASIC",
+        aux_output_level="FULL",
     )
 
     lidar_sensor = LidarSensor(
