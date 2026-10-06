@@ -341,6 +341,14 @@ The following remain deliberately open:
 
 These should be decided from research hypotheses and experimental evidence, not from the reference fixture.
 
+## Post-spike opportunity: Fly4Future X500 / CTU-MRS lineage
+
+We have access to a physical Fly4Future X500 UAV. [Fly4Future's official X500 description](https://fly4future.com/custom-drones/x500-darpa-research-drone/) states that the X500 was influenced by the CTU Multi-Robot Systems Group's DARPA SubT platform and that the platform described by Petráček et al. in *Large-Scale Exploration of Cave Environments by Unmanned Aerial Vehicles* served as a foundation for X500 development. This confirms lineage, not exact hardware or sensor equivalence between our purchased vehicle and the paper's UAV. The actual vehicle configuration must be audited before reuse.
+
+When work resumes, existing CTU-MRS and Fly4Future resources may provide a better starting point for an Isaac-native representation than modelling the vehicle from scratch. Potentially useful material includes geometry and meshes, mass and inertia, propulsion configuration, sensor extrinsics, physical limits, and simulator parameters. Every imported parameter must record its provenance as measured/identified, manufacturer or design nominal, geometry-derived, simulator-tuned, assumed/default, or unknown.
+
+Reusing CTU-MRS physical/model resources and integrating the MRS UAV System are separate opportunities. The MRS control, estimation, and planning stack should remain optional and external unless a future research question justifies integration. A robust Isaac/MRS integration could eventually be useful upstream, but it is not a current objective. This opportunity does not reopen the spike; the Isaac Sim / Isaac Lab Research Spike remains formally paused.
+
 ## 17. Work paused as useful but not timely
 
 Do not continue these topics without a concrete experimental need:
@@ -411,6 +419,8 @@ For RViz, use `use_sim_time=true`, Fixed Frame `world`, RTX PointCloud2 topic `/
 ## 20. Next smallest experiment when Isaac work resumes
 
 Implement one minimal manager-based UAV navigation/control task to prove the full scientific workflow. It may use ARL Robot 1 as a temporary fixture and should use native Isaac Lab/PyTorch observations rather than ROS transport. Give it one measurable objective, a small deterministic evaluation set, explicit metrics, a fixed training configuration, and a reproducible checkpoint/evaluation command.
+
+A high-fidelity X500 model is not required for the first scientific workflow task. Do not block initial RL/MPC experiments on CTU-MRS model integration.
 
 The success criterion is the workflow:
 
